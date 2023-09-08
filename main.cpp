@@ -420,8 +420,8 @@ int main()
 
     ofstream pld("patch.ld");
     pld << "OUTPUT_FORMAT(pei-i386)\n"
-        << "OUTPUT(build/patch.pe)\n"
-        << "SECTIONS {\n";
+           "OUTPUT(build/patch.pe)\n"
+           "SECTIONS {\n";
 
     vector<COFFFile> hooks;
     hf = _findfirst("./build/*.o", &fdata);
@@ -470,12 +470,12 @@ int main()
                 continue;
             }
             uint32_t size = hf->sects[i].size;
-            char *buf = (char *)malloc(size);
+            char *buf = new char[size]{};
             pf.seekp(psect->FOffset);
             pf.read(buf, size);
             nf.seekp(psect->VOffset);
             nf.write(buf, size);
-            free(buf);
+            delete[] buf;
             hi++;
         }
     }
@@ -495,12 +495,12 @@ int main()
         sect->VSize = sectsize;
         sect->FSize = sectsize;
     }
-    char *buf = (char *)malloc(sect->FSize);
+    char *buf = new char[sect->FSize]{};
     pf.seekp(sect->FOffset);
     pf.read(buf, sect->FSize);
     nf.seekp(nsect->FOffset);
     nf.write(buf, sect->FSize);
-    free(buf);
+    delete[] buf;
     nf.Save();
     pf.close();
 
