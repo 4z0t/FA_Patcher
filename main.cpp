@@ -404,11 +404,12 @@ int main()
     MakeLists("./section/", "*.cpp", smain);
     smain.close();
 
-#define sectVAddr to_string(nf.imgbase + newVOffset - 0x1000)
-    if (system(("cd build && g++ " + cflags + "\
-      -Wl,-T,../section.ld,--image-base," +
-                sectVAddr + ",-s,-Map,sectmap.txt ../section.cpp")
-                   .c_str()))
+    if (system(
+            ("cd build && g++ " + cflags +
+             " -Wl,-T,../section.ld,--image-base," +
+             to_string(nf.imgbase + newVOffset - 0x1000) +
+             ",-s,-Map,sectmap.txt ../section.cpp")
+                .c_str()))
         return 1;
 
     ParseMap("build/sectmap.txt", "define.h");
