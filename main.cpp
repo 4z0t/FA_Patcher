@@ -436,9 +436,9 @@ int main()
     for (int i = 0; i < hooks.size(); i++)
     {
         COFFFile *hf = &hooks[i];
-        for (int i = 0; i < hf->sects.size(); i++)
+        for (int j = 0; j < hf->sects.size(); j++)
         {
-            COFFSect *sect = &hf->sects[i];
+            COFFSect *sect = &hf->sects[j];
             pld << "  .h" << to_string(hi++) << " 0x" << hex << sect->offset;
             pld << " : SUBALIGN(1) {\n    " << hf->name << "(" << sect->name << ")\n  }\n";
         }
