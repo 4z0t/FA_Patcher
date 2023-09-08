@@ -72,7 +72,10 @@ unordered_map<int, string> ExtractFunctionAddresses(const string &dir, const cha
 
 void CreateSectionWithAddresses(const string &base_file_name, const string &new_file_name, const unordered_map<int, string> &addresses)
 {
-    filesystem::copy(base_file_name, new_file_name);
+    filesystem::copy_file(
+        base_file_name,
+        new_file_name,
+        filesystem::copy_options::overwrite_existing | filesystem::copy_options::update_existing);
     ofstream new_file(new_file_name, ios::app);
     if (!new_file.is_open())
     {
