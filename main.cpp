@@ -450,9 +450,11 @@ int main()
     *(.rdata$zzz)\n    *(.eh_frame)\n    *(.ctors)\n    *(.reloc)\n  }\n}";
     pld.close();
 
-    if (system(("ld -T patch.ld --image-base " + to_string(nf.imgbase) +
-                " -s -Map build/patchmap.txt")
-                   .c_str()))
+    if (system(
+            ("ld -T patch.ld --image-base " +
+             to_string(nf.imgbase) +
+             " -s -Map build/patchmap.txt")
+                .c_str()))
         return 1;
 
     PEFile pf("build/patch.pe");
@@ -462,15 +464,15 @@ int main()
         COFFFile *hf = &hooks[i];
         if (hf->sects.empty())
             cout << "No hooks in " << hf->name << '\n';
-        for (int i = 0; i < hf->sects.size(); i++)
+        for (int j = 0; j < hf->sects.size(); j++)
         {
             PESect *psect = pf.FindSect((".h" + to_string(hi)).c_str());
             if (psect->VOffset < 0)
             {
-                cout << "Hook invalid offset " << hf->name << " .h" << i << "\n";
+                cout << "Hook invalid offset " << hf->name << " .h" << j << "\n";
                 continue;
             }
-            uint32_t size = hf->sects[i].size;
+            uint32_t size = hf->sects[j].size;
             char *buf = new char[size]{};
             pf.seekp(psect->FOffset);
             pf.read(buf, size);
