@@ -2,6 +2,7 @@ using namespace std;
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <io.h>
 #include <iostream>
@@ -12,8 +13,78 @@ using namespace std;
 #include <unordered_set>
 #include <vector>
 
+const regex ADDRESS_REGEX(R"(.*ADDR\((0x[0-9A-Fa-f]{6,8})\).*\s([_a-zA-Z]\w*)\(.*\))");
+void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
+{
+    ifstream f(name);
+    if (!f.is_open())
+        return;
+
+    string l;
+    while (getline(f, l, ';'))
+    {
+        if (l.size() > 1024)
+            continue;
+
+        smatch address_match;
+        replace(l.begin(), l.end(), '\n', ' ');
+        if (regex_match(l, address_match, ADDRESS_REGEX))
+        {
+            if (address_match.size() == 3)
+            {
+                auto address = address_match[1];
+                auto funcname = address_match[2];
+                size_t pos;
+                int ad = stoi(address, &pos, 16);
+                if (addresses.find(ad) != addresses.end())
+                {
+                    cerr << "Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec << '\n';
+                    return;
+                }
+                else
+                {
+                    cout << "Registering function '" << funcname << "' at 0x" << hex << ad << dec << '\n';
+                    addresses[ad] = funcname;
+                }
+            }
+        }
+    }
+}
+
+unordered_map<int, string> ExtractFunctionAddresses(const string &dir, const char *mask)
+{
+    unordered_map<int, string> addresses{};
+    _finddata_t data;
+    int hf = _findfirst((dir + mask).c_str(), &data);
+    if (hf < 0)
+        return addresses;
+    do
+    {
+        LookupAddresses(dir + data.name, addresses);
+    } while (_findnext(hf, &data) != -1);
+    _findclose(hf);
+
+    return addresses;
+}
+
 #define ErrLog(str) \
     cerr << __FUNCTION__ << ":" << __LINE__ << str << "\n"
+
+void CreateSectionWithAddresses(const string &base_file_name, const string &new_file_name, const unordered_map<int, string> &addresses)
+{
+    filesystem::copy(base_file_name, new_file_name);
+    ofstream new_file(new_file_name, ios::app);
+    if (!new_file.is_open())
+    {
+        ErrLog("Couldn't open new section file " << new_file_name);
+        return;
+    }
+    for (const auto &[addr, funcname] : addresses)
+    {
+        new_file << "_" << funcname << " = 0x" << hex << addr << ";\n";
+    }
+    new_file.close();
+}
 
 void RemoveFiles(const string &dir, const char *mask)
 {
@@ -404,9 +475,11 @@ int main()
     MakeLists("./section/", "*.cpp", smain);
     smain.close();
 
+    auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
+    CreateSectionWithAddresses("./section.ld", "./new_section.ld", addresses);
     if (system(
             ("cd build && g++ " + cflags +
-             " -Wl,-T,../section.ld,--image-base," +
+             " -Wl,-T,../new_section.ld,--image-base," +
              to_string(nf.imgbase + newVOffset - 0x1000) +
              ",-s,-Map,sectmap.txt ../section.cpp")
                 .c_str()))
