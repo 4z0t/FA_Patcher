@@ -1,5 +1,6 @@
 using namespace std;
 
+#include "utility.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
@@ -12,7 +13,6 @@ using namespace std;
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utility.hpp"
 
 const regex ADDRESS_REGEX(R"(.*\s([_a-zA-Z]\w*)\([^\(\)]*\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
 void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
@@ -54,17 +54,13 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 
 int FindName(const string &name, const unordered_map<int, string> &addresses)
 {
-    size_t pos = name.find_last_of("E");
-    string cut_name = name;
-
-    if (pos != string::npos)
-        cut_name = name.substr(0, pos);
+    size_t pos;
     for (const auto &[addr, funcname] : addresses)
     {
-        pos = cut_name.find(funcname);
+        pos = name.find(funcname);
         if (pos != string::npos)
         {
-            if (pos > 0 && isdigit(cut_name[pos - 1]))
+            if (pos > 0 && isdigit(name[pos - 1]))
                 return addr;
         }
     }
