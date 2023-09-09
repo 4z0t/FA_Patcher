@@ -73,7 +73,7 @@ int FindName(const string &name, const unordered_map<int, string> &addresses)
 void MapNames(const string &dir, const string &file_name, unordered_map<int, string> &mangled_addresses, const unordered_map<int, string> &addresses)
 {
     const string file_path = dir + file_name;
-    if (system(("g++ -c -m32 -fpermissive -std=c++17 -Wno-return-type " + file_path + " -o ./build/" + file_name + ".gch").c_str()))
+    if (system(("g++ -D__GETADDR -c -m32 -fpermissive -std=c++17 -Wno-return-type " + file_path + " -o ./build/" + file_name + ".gch").c_str()))
     {
         ErrLog("unable to compile header file " << file_path);
         return;
