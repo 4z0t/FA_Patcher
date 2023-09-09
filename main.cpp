@@ -14,7 +14,7 @@ using namespace std;
 #include <vector>
 #include "utility.hpp"
 
-const regex ADDRESS_REGEX(R"(.*ADDR\((0x[0-9A-Fa-f]{6,8})\).*\s([_a-zA-Z]\w*)\(.*\))");
+const regex ADDRESS_REGEX(R"(.*\s([_a-zA-Z]\w*)\([^\(\)]*\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
 void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 {
     ifstream f(name);
@@ -33,8 +33,8 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
         {
             if (address_match.size() == 3)
             {
-                auto address = address_match[1];
-                auto funcname = address_match[2];
+                auto address = address_match[2];
+                auto funcname = address_match[1];
                 size_t pos;
                 int ad = stoi(address, &pos, 16);
                 if (addresses.find(ad) != addresses.end())
