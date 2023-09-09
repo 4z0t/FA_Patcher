@@ -61,9 +61,11 @@ int FindName(const string &name, const unordered_map<int, string> &addresses)
         cut_name = name.substr(0, pos);
     for (const auto &[addr, funcname] : addresses)
     {
-        if (cut_name.find(funcname) != string::npos)
+        pos = cut_name.find(funcname);
+        if (pos != string::npos)
         {
-            return addr;
+            if (pos > 0 && isdigit(cut_name[pos - 1]))
+                return addr;
         }
     }
 
