@@ -391,6 +391,7 @@ string newfile("ForgedAlliance_exxt.exe");
 string newsect(".exxt");
 uint32_t sectsize = 0x80000;
 string cflags("-pipe -m32 -Os -nostartfiles -w -fpermissive -masm=intel -std=c++17 -march=core2 -mfpmath=both");
+bool use_address_mapping = false;
 
 #define align(v, a) ((v) + ((a)-1)) & ~((a)-1)
 
@@ -417,6 +418,8 @@ int main()
                 ss >> hex >> sectsize;
             else if (l == "cflags")
                 getline(ss, cflags);
+            else if (l == "addressmapping")
+                ss >> use_address_mapping;
         }
     }
     else
@@ -426,7 +429,8 @@ int main()
         f << "newfile " << newfile << "\n";
         f << "newsect " << newsect << "\n";
         f << "sectsize 0x" << hex << sectsize << "\n";
-        f << "cflags " << cflags;
+        f << "cflags " << cflags << "\n";
+        f << "addressmapping " << use_address_mapping << "\n";
     }
 
     ifstream src(oldfile, ios::binary);
@@ -480,11 +484,18 @@ int main()
     MakeLists("./section/", "*.cpp", smain);
     smain.close();
 
-    auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
-    CreateSectionWithAddresses("./section.ld", "./new_section.ld", addresses);
+    string section_file_name = "section.ld";
+
+    if (use_address_mapping)
+    {
+        section_file_name = "new_section.ld";
+        auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
+        CreateSectionWithAddresses("./section.ld", "./new_section.ld", addresses);
+    }
+
     if (system(
             ("cd build && g++ " + cflags +
-             " -Wl,-T,../new_section.ld,--image-base," +
+             " -Wl,-T,../" + section_file_name + ",--image-base," +
              to_string(nf.imgbase + newVOffset - 0x1000) +
              ",-s,-Map,sectmap.txt ../section.cpp")
                 .c_str()))
