@@ -52,15 +52,15 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
     }
 }
 
-int FindName(const string &name, const unordered_map<int, string> &addresses)
+int FindName(string mangled_name, const unordered_map<int, string> &addresses)
 {
     for (const auto &[addr, funcname] : addresses)
     {
-        size_t pos = name.find(funcname);
+        auto name = to_string(funcname.size()) + funcname;
+        size_t pos = mangled_name.find(name);
         if (pos != string::npos)
         {
-            if (pos > 0 && isdigit(name[pos - 1]))
-                return addr;
+            return addr;
         }
     }
 
