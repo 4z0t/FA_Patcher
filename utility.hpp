@@ -14,6 +14,8 @@
 
 #define ErrLog(str) \
     cerr << __FUNCTION__ << ":" << __LINE__ << str << "\n"
+#define WarnLog(str) \
+    cerr << "Warning:\t" << str << "\n"
 
 bool starts_with(std::string str, const char *substr)
 {

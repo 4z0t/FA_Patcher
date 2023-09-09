@@ -39,7 +39,7 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
                 int ad = stoi(address, &pos, 16);
                 if (addresses.find(ad) != addresses.end())
                 {
-                    cerr << "Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec << '\n';
+                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec);
                     return;
                 }
                 else
@@ -54,10 +54,9 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 
 int FindName(const string &name, const unordered_map<int, string> &addresses)
 {
-    size_t pos;
     for (const auto &[addr, funcname] : addresses)
     {
-        pos = name.find(funcname);
+        size_t pos = name.find(funcname);
         if (pos != string::npos)
         {
             if (pos > 0 && isdigit(name[pos - 1]))
@@ -102,7 +101,7 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, str
                     string mangled = mangled_addresses.at(addr);
                     if (mangled != line)
                     {
-                        ErrLog("Function '" << addresses.at(addr) << "' has different mangled versions across headers: '" << mangled << "' and '" << line << "'\n");
+                        WarnLog("Function '" << addresses.at(addr) << "' has different mangled versions across headers: '" << mangled << "' and '" << line);
                     }
                 }
                 else
