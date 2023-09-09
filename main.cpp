@@ -12,6 +12,7 @@ using namespace std;
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "utility.hpp"
 
 const regex ADDRESS_REGEX(R"(.*ADDR\((0x[0-9A-Fa-f]{6,8})\).*\s([_a-zA-Z]\w*)\(.*\))");
 void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
@@ -51,6 +52,87 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
     }
 }
 
+int FindName(const string &name, const unordered_map<int, string> &addresses)
+{
+    size_t pos = name.find_last_of("E");
+    string cut_name = name;
+
+    if (pos != string::npos)
+        cut_name = name.substr(0, pos);
+    for (const auto &[addr, funcname] : addresses)
+    {
+        if (cut_name.find(funcname) != string::npos)
+        {
+            return addr;
+        }
+    }
+
+    return 0;
+}
+
+void MapNames(const string &dir, const string &file_name, unordered_map<int, string> &mangled_addresses, const unordered_map<int, string> &addresses)
+{
+    const string file_path = dir + file_name;
+    if (system(("g++ -c -m32 -fpermissive -std=c++17 -Wno-return-type " + file_path + " -o ./build/" + file_name + ".gch").c_str()))
+    {
+        ErrLog("unable to compile header file " << file_path);
+        return;
+    }
+
+    if (system(("strings ./build/" + file_name + ".gch >> ./build/s.txt").c_str()))
+    {
+        ErrLog("unable to extract strings " << file_name);
+        return;
+    }
+
+    ifstream strings_file("./build/s.txt");
+    if (!strings_file.is_open())
+    {
+        ErrLog("unable to open strings file");
+        return;
+    }
+    string line;
+    while (getline(strings_file, line))
+    {
+        if (starts_with(line, "_Z"))
+        {
+            int addr = FindName(line, addresses);
+            if (addr)
+            {
+                if (mangled_addresses.find(addr) != mangled_addresses.end())
+                {
+                    string mangled = mangled_addresses.at(addr);
+                    if (mangled != line)
+                    {
+                        ErrLog("Function '" << addresses.at(addr) << "' has different mangled versions across headers: '" << mangled << "' and '" << line << "'\n");
+                    }
+                }
+                else
+                {
+                    cout << "Found mangled version of function '" << addresses.at(addr) << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
+                    mangled_addresses[addr] = line;
+                }
+            }
+        }
+    }
+}
+
+unordered_map<int, string> MapMangledNames(const string &dir, const char *mask, const unordered_map<int, string> &addresses)
+{
+    unordered_map<int, string> mangled_addresses{};
+    _finddata_t data;
+    int hf = _findfirst((dir + mask).c_str(), &data);
+    if (hf < 0)
+        return mangled_addresses;
+    do
+    {
+        MapNames(dir, data.name, mangled_addresses, addresses);
+    } while (_findnext(hf, &data) != -1);
+    _findclose(hf);
+
+    return mangled_addresses;
+}
+
 unordered_map<int, string> ExtractFunctionAddresses(const string &dir, const char *mask)
 {
     unordered_map<int, string> addresses{};
@@ -66,9 +148,6 @@ unordered_map<int, string> ExtractFunctionAddresses(const string &dir, const cha
 
     return addresses;
 }
-
-#define ErrLog(str) \
-    cerr << __FUNCTION__ << ":" << __LINE__ << str << "\n"
 
 void CreateSectionWithAddresses(const string &base_file_name, const string &new_file_name, const unordered_map<int, string> &addresses)
 {
@@ -102,11 +181,6 @@ void RemoveFiles(const string &dir, const char *mask)
         remove((dir + data.name).c_str());
     } while (_findnext(hf, &data) != -1);
     _findclose(hf);
-}
-
-bool starts_with(string str, const char *substr)
-{
-    return strncmp(str.c_str(), substr, strlen(substr)) == 0;
 }
 
 void ParseMap(const char *mapfile, const char *outfile)
@@ -481,6 +555,7 @@ int main()
     smain.close();
 
     auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
+    addresses = MapMangledNames("./section/include/", "LuaAPI.h", addresses);
     CreateSectionWithAddresses("./section.ld", "./new_section.ld", addresses);
     if (system(
             ("cd build && g++ " + cflags +
