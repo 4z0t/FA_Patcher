@@ -72,6 +72,8 @@ unordered_map<int, string> ExtractFunctionAddresses(const string &dir, const cha
 
 void CreateSectionWithAddresses(const string &base_file_name, const string &new_file_name, const unordered_map<int, string> &addresses)
 {
+    if (filesystem::exists(new_file_name))
+        filesystem::remove(new_file_name);
     filesystem::copy_file(
         base_file_name,
         new_file_name,
