@@ -22,9 +22,11 @@ public:
     string args;
 };
 
-//const regex COMMENT_REGEX(R"((//.*\n)|(/\\*(.*?)\\*/))");
+// const regex COMMENT_REGEX(R"((//.*\n)|(/\\*(.*?)\\*/))");
 const regex COMMENT_REGEX(R"(//.*\n)");
 const regex MULT_SPACES(R"(\s+)");
+
+const regex CLASS_DEF_REGEX(R"((class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
 void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
 {
 
@@ -35,10 +37,22 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
     string l;
     while (getline(f, l, ';'))
     {
+
         string res;
         res = regex_replace(l, COMMENT_REGEX, "");
         res = regex_replace(res, MULT_SPACES, " ");
-        cout << res << "\n";
+
+        auto words_begin =
+            std::sregex_iterator(res.begin(), res.end(), CLASS_DEF_REGEX);
+        auto words_end = std::sregex_iterator();
+
+        for (std::sregex_iterator i = words_begin; i != words_end; ++i)
+        {
+            smatch match = *i;
+            string match_str = match.str();
+            cout << "Found " << match_str << '\n';
+        }
+        // cout << res << "\n";
     }
 }
 
