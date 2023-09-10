@@ -8,6 +8,7 @@ public:
     string name;
     size_t start_position;
     size_t end_position;
+    int level;
 };
 
 class ClassInfo : public SymbolInfo
@@ -30,25 +31,38 @@ const regex MULT_SPACES(R"(\s+)");
 
 const regex CLASS_DEF_REGEX(R"((namespace|class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
 
-int CountBrackets(const string &s, size_t start_pos, size_t end_pos)
+void CountBrackets(
+    int &bracket_counter,
+    const string &s,
+    vector<SymbolInfo> &info,
+    stack<SymbolInfo> &namespaces,
+    size_t pos)
 {
-    int i = 0;
-    for (size_t j = start_pos; j < end_pos; j++)
+    size_t j = 0;
+    for (char c : s)
     {
-        char c = s[j];
         if (c == '{')
         {
-            i++;
+            ++bracket_counter;
+            continue;
         }
-        else if (c == '}')
+        if (c == '}')
         {
-            i--;
+            --bracket_counter;
+            if (!namespaces.empty() && namespaces.top().level == bracket_counter)
+            {
+                auto ns = namespaces.top();
+                namespaces.pop();
+                ns.end_position = pos + j;
+                info.push_back(ns);
+            }
         }
+
+        j++;
     }
-    return i;
 }
 
-void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
+void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info)
 {
 
     ifstream f(name);
@@ -76,18 +90,17 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
             size_t start_pos = pos + match.position(0);
             size_t end_pos = start_pos + match.length();
             string class_name = match[2];
-            cout << start_pos << "\n";
-            cout << end_pos << "\n";
-            cout << class_name << "\n";
-
-            namespaces.push(SymbolInfo{class_name, start_pos, 0});
-
-            bracket_counter += CountBrackets(res, prev_bracket, match.position(0));
-            prev_bracket = match.position(0);
+            // cout << start_pos << "\n";
+            // cout << end_pos << "\n";
+            // cout << class_name << "\n";
+            size_t end_match = match.position(0) + match.length();
+            namespaces.push(SymbolInfo{class_name, start_pos, 0, bracket_counter});
+            cout << match[0] << " " << end_match << " " << bracket_counter << "\n";
+            CountBrackets(bracket_counter, res.substr(prev_bracket, end_match - prev_bracket), info, namespaces, pos);
+            prev_bracket = end_match;
         }
-        bracket_counter += CountBrackets(res, prev_bracket, res.size());
+        CountBrackets(bracket_counter, res.substr(prev_bracket), info, namespaces, pos);
     }
-    cout << bracket_counter << "\n";
 }
 
 const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
@@ -138,4 +151,11 @@ int main()
 
     vector<SymbolInfo> info;
     LookupSymbolInfo("LuaAPI.h", info);
+    cout << "AAAAAAAAAAAAA\n";
+    for (const auto inf : info)
+    {
+        cout << inf.name << "\n";
+        cout << inf.start_position << "\n";
+        cout << inf.end_position << "\n";
+    }
 }
