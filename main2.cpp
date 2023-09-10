@@ -1,5 +1,6 @@
 using namespace std;
 #include "utility.hpp"
+#include <stack>
 
 class SymbolInfo
 {
@@ -28,12 +29,34 @@ const regex COMMENT_REGEX(R"(//.*\n)");
 const regex MULT_SPACES(R"(\s+)");
 
 const regex CLASS_DEF_REGEX(R"((namespace|class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
+
+int CountBrackets(const string &s, size_t start_pos, size_t end_pos)
+{
+    int i = 0;
+    for (size_t j = start_pos; j < end_pos; j++)
+    {
+        char c = s[j];
+        if (c == '{')
+        {
+            i++;
+        }
+        else if (c == '}')
+        {
+            i--;
+        }
+    }
+    return i;
+}
+
 void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
 {
 
     ifstream f(name);
     if (!f.is_open())
         return;
+
+    stack<SymbolInfo> namespaces{};
+    int bracket_counter = 0;
 
     string l;
 
@@ -46,19 +69,25 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
         const auto words_begin = std::sregex_iterator(res.begin(), res.end(), CLASS_DEF_REGEX);
         const auto words_end = std::sregex_iterator();
 
+        size_t prev_bracket = 0;
         for (std::sregex_iterator i = words_begin; i != words_end; ++i)
         {
             smatch match = *i;
             size_t start_pos = pos + match.position(0);
             size_t end_pos = start_pos + match.length();
+            string class_name = match[2];
             cout << start_pos << "\n";
             cout << end_pos << "\n";
-            string match_str = match.str();
-            cout << "Found " << match_str << '\n';
-        }
+            cout << class_name << "\n";
 
-        // cout << res << "\n";
+            namespaces.push(SymbolInfo{class_name, start_pos, 0});
+
+            bracket_counter += CountBrackets(res, prev_bracket, match.position(0));
+            prev_bracket = match.position(0);
+        }
+        bracket_counter += CountBrackets(res, prev_bracket, res.size());
     }
+    cout << bracket_counter << "\n";
 }
 
 const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
@@ -80,11 +109,11 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
         {
             if (address_match.size() == 4)
             {
-                auto address = address_match[3];
-                auto arguments = address_match[2];
-                auto funcname = address_match[1];
-                size_t pos;
-                int ad = stoi(address, &pos, 16);
+                const auto funcname = address_match[1];
+                const auto arguments = address_match[2];
+                const auto address = address_match[3];
+
+                int ad = stoi(address, nullptr, 16);
                 if (addresses.find(ad) != addresses.end())
                 {
                     WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec);
@@ -104,8 +133,8 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 
 int main()
 {
-    unordered_map<int, string> addresses;
-    LookupAddresses("LuaAPI.h", addresses);
+    // unordered_map<int, string> addresses;
+    // LookupAddresses("LuaAPI.h", addresses);
 
     vector<SymbolInfo> info;
     LookupSymbolInfo("LuaAPI.h", info);
