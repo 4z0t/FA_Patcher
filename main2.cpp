@@ -30,7 +30,7 @@ const regex COMMENT_REGEX(R"(//.*\n)");
 const regex MULT_SPACES(R"(\s+)");
 
 const regex CLASS_DEF_REGEX(R"((namespace|class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
-
+const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
 void CountBrackets(
     int &bracket_counter,
     const string &s,
@@ -62,7 +62,23 @@ void CountBrackets(
     }
 }
 
-void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info)
+string PlusLength(const string &s)
+{
+    return to_string(s.length()) + s;
+}
+
+string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
+{
+    string res = PlusLength(funcname);
+    while (!namespaces.empty())
+    {
+        res = PlusLength(namespaces.top().name) + res;
+        namespaces.pop();
+    }
+    return res;
+}
+
+void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info, unordered_map<int, string> &addresses)
 {
 
     ifstream f(name);
@@ -100,10 +116,40 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info)
             prev_bracket = end_match;
         }
         CountBrackets(bracket_counter, res.substr(prev_bracket), info, namespaces, pos);
+
+        if (res.size() > 1024)
+            continue;
+
+        smatch address_match;
+        replace(l.begin(), l.end(), '\n', ' ');
+        if (regex_match(l, address_match, ADDRESS_REGEX))
+        {
+            if (address_match.size() == 4)
+            {
+                const auto funcname = address_match[1];
+                const auto arguments = address_match[2];
+                const auto address = address_match[3];
+
+                int ad = stoi(address, nullptr, 16);
+                if (addresses.find(ad) != addresses.end())
+                {
+                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec);
+                    return;
+                }
+                else
+                {
+                    string fname = MangleName(namespaces, funcname);
+                    cout << address_match.position(1) + pos << "\n";
+                    cout << "Registering function '" << fname << "'"
+                         << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
+                    addresses[ad] = fname;
+                }
+            }
+        }
     }
 }
 
-const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
+
 void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 {
     ifstream f(name);
@@ -146,11 +192,11 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 
 int main()
 {
-    // unordered_map<int, string> addresses;
     // LookupAddresses("LuaAPI.h", addresses);
 
+    unordered_map<int, string> addresses;
     vector<SymbolInfo> info;
-    LookupSymbolInfo("LuaAPI.h", info);
+    LookupSymbolInfo("LuaAPI.h", info, addresses);
     cout << "AAAAAAAAAAAAA\n";
     for (const auto inf : info)
     {
