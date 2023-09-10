@@ -34,7 +34,6 @@ const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-
 void CountBrackets(
     int &bracket_counter,
     const string &s,
-    vector<SymbolInfo> &info,
     stack<SymbolInfo> &namespaces,
     size_t pos)
 {
@@ -54,7 +53,6 @@ void CountBrackets(
                 auto ns = namespaces.top();
                 namespaces.pop();
                 ns.end_position = pos + j;
-                info.push_back(ns);
             }
         }
 
@@ -78,7 +76,7 @@ string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
     return res;
 }
 
-void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info, unordered_map<int, string> &addresses)
+void LookupSymbolInfo(const string &name, unordered_map<int, string> &addresses)
 {
 
     ifstream f(name);
@@ -112,10 +110,10 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info, unordered_ma
             size_t end_match = match.position(0) + match.length();
             namespaces.push(SymbolInfo{class_name, start_pos, 0, bracket_counter});
             cout << match[0] << " " << end_match << " " << bracket_counter << "\n";
-            CountBrackets(bracket_counter, res.substr(prev_bracket, end_match - prev_bracket), info, namespaces, pos);
+            CountBrackets(bracket_counter, res.substr(prev_bracket, end_match - prev_bracket), namespaces, pos);
             prev_bracket = end_match;
         }
-        CountBrackets(bracket_counter, res.substr(prev_bracket), info, namespaces, pos);
+        CountBrackets(bracket_counter, res.substr(prev_bracket), namespaces, pos);
 
         if (res.size() > 1024)
             continue;
@@ -148,7 +146,6 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> &info, unordered_ma
         }
     }
 }
-
 
 void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 {
@@ -195,13 +192,6 @@ int main()
     // LookupAddresses("LuaAPI.h", addresses);
 
     unordered_map<int, string> addresses;
-    vector<SymbolInfo> info;
-    LookupSymbolInfo("LuaAPI.h", info, addresses);
-    cout << "AAAAAAAAAAAAA\n";
-    for (const auto inf : info)
-    {
-        cout << inf.name << "\n";
-        cout << inf.start_position << "\n";
-        cout << inf.end_position << "\n";
-    }
+    LookupSymbolInfo("LuaAPI.h", addresses);
+
 }
