@@ -19,9 +19,10 @@ class NameSpaceInfo : public SymbolInfo
 {
 };
 
-class FuncInfo : public SymbolInfo
+class FuncInfo
 {
 public:
+    string name;
     string args;
 };
 
@@ -76,29 +77,54 @@ string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
     return res;
 }
 
-const regex ARGS_REGEX(R"((const\s+)?([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
+const unordered_map<string, string> TYPE_MAP{
+    {"usignedint", "j"},
+    {"char", "c"},
+    {"float", "f"},
+    {"int", "i"},
+};
+
+string MangleType(const string &_const, const string &_type, const string &_ptr)
+{
+    string name = "";
+    if (!_ptr.empty())
+    {
+        name = "P" + name;
+    }
+    if (!_const.empty())
+    {
+        name += "K";
+    }
+    if (TYPE_MAP.find(_type) == TYPE_MAP.end())
+    {
+        name += PlusLength(_type);
+    }
+    else
+    {
+        name += TYPE_MAP.at(_type);
+    }
+    return name;
+}
+
+const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
 string MangleArguments(string args)
 {
     cout << args << "\n\n";
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
 
-    size_t prev_bracket = 0;
+    string name = "";
     for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
         smatch match = *i;
 
-        cout << match[0] << '\n';
-        cout << match[1] << '\n'; // const
-        cout << match[2] << '\n'; // typename
-        cout << match[3] << '\n'; // ptr
-        cout << match[4] << '\n'; // name
+        name += MangleType(match[1], match[2].str() + match[3].str(), match[4]);
     }
     cout << '\n';
-    return {};
+    return name;
 }
 
-void LookupSymbolInfo(const string &name, unordered_map<int, string> &addresses)
+void LookupSymbolInfo(const string &name, unordered_map<int, FuncInfo> &addresses)
 {
 
     ifstream f(name);
@@ -153,17 +179,17 @@ void LookupSymbolInfo(const string &name, unordered_map<int, string> &addresses)
                 int ad = stoi(address, nullptr, 16);
                 if (addresses.find(ad) != addresses.end())
                 {
-                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec);
+                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad).name << "' : 0x" << hex << ad << dec);
                     return;
                 }
                 else
                 {
                     string fname = MangleName(namespaces, funcname);
                     cout << address_match.position(1) + pos << "\n";
-                    MangleArguments(arguments);
+                    auto args = MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
-                         << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
-                    addresses[ad] = fname;
+                         << "(" << args << ") at 0x" << hex << ad << dec << '\n';
+                    addresses[ad] = {fname, args};
                 }
             }
         }
@@ -214,6 +240,6 @@ int main()
 {
     // LookupAddresses("LuaAPI.h", addresses);
 
-    unordered_map<int, string> addresses;
+    unordered_map<int, FuncInfo> addresses;
     LookupSymbolInfo("LuaAPI.h", addresses);
 }
