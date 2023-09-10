@@ -23,7 +23,7 @@ class FuncInfo
 {
 public:
     string name;
-    string args;
+    vector<string> args;
 };
 
 // const regex COMMENT_REGEX(R"((//.*\n)|(/\\*(.*?)\\*/))");
@@ -90,10 +90,10 @@ string MangleType(const string &_const, const string &_type, const string &_ptr)
     if (!_ptr.empty())
     {
         name = "P" + name;
-    }
-    if (!_const.empty())
-    {
-        name += "K";
+        if (!_const.empty())
+        {
+            name += "K";
+        }
     }
     if (TYPE_MAP.find(_type) == TYPE_MAP.end())
     {
@@ -106,22 +106,29 @@ string MangleType(const string &_const, const string &_type, const string &_ptr)
     return name;
 }
 
+string MangleArgs(vector<string> &args)
+{
+    string name = "";
+
+    return name;
+}
+
 const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
-string MangleArguments(string args)
+vector<string> MangleArguments(string args)
 {
     cout << args << "\n\n";
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
 
-    string name = "";
+    vector<string> mangled_args{};
     for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
         smatch match = *i;
 
-        name += MangleType(match[1], match[2].str() + match[3].str(), match[4]);
+        mangled_args.push_back(MangleType(match[1], match[2].str() + match[3].str(), match[4]));
     }
     cout << '\n';
-    return name;
+    return mangled_args;
 }
 
 void LookupSymbolInfo(const string &name, unordered_map<int, FuncInfo> &addresses)
@@ -188,7 +195,7 @@ void LookupSymbolInfo(const string &name, unordered_map<int, FuncInfo> &addresse
                     cout << address_match.position(1) + pos << "\n";
                     auto args = MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
-                         << "(" << args << ") at 0x" << hex << ad << dec << '\n';
+                         << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
                     addresses[ad] = {fname, args};
                 }
             }

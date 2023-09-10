@@ -9,11 +9,11 @@ using namespace std;
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <stack>
 #include <stdio.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <stack>
 
 const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
 
@@ -27,7 +27,6 @@ public:
     size_t end_position;
     int level;
 };
-
 
 void CountBrackets(
     int &bracket_counter,
@@ -74,7 +73,59 @@ string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
     return res;
 }
 
-void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
+const unordered_map<string, string> TYPE_MAP{
+    {"usignedint", "j"},
+    {"char", "c"},
+    {"float", "f"},
+    {"int", "i"},
+};
+
+class FuncInfo
+{
+public:
+    string name;
+    vector<string> args;
+};
+
+string MangleType(const string &_const, const string &_type, const string &_ptr)
+{
+    string name = "";
+    if (!_ptr.empty())
+    {
+        name = "P" + name;
+        if (!_const.empty())
+        {
+            name += "K";
+        }
+    }
+    if (TYPE_MAP.find(_type) == TYPE_MAP.end())
+    {
+        name += PlusLength(_type);
+    }
+    else
+    {
+        name += TYPE_MAP.at(_type);
+    }
+    return name;
+}
+
+const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
+vector<string> MangleArguments(string args)
+{
+    const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
+    const auto words_end = std::sregex_iterator();
+
+    vector<string> mangled_args{};
+    for (std::sregex_iterator i = words_begin; i != words_end; ++i)
+    {
+        smatch match = *i;
+
+        mangled_args.push_back(MangleType(match[1], match[2].str() + match[3].str(), match[4]));
+    }
+    return mangled_args;
+}
+
+void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses)
 {
 
     ifstream f(name);
@@ -122,36 +173,44 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
                 int ad = stoi(address, nullptr, 16);
                 if (addresses.find(ad) != addresses.end())
                 {
-                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad) << "' : 0x" << hex << ad << dec);
+                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad).name << "' : 0x" << hex << ad << dec);
                     return;
                 }
                 else
                 {
                     string fname = MangleName(namespaces, funcname);
+                    auto args = MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
                          << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
-                    addresses[ad] = fname;
+                    addresses[ad] = {fname, args};
                 }
             }
         }
     }
 }
 
-int FindName(string mangled_name, const unordered_map<int, string> &addresses)
+int FindName(string mangled_name, const unordered_map<int, FuncInfo> &addresses)
 {
-    for (const auto &[addr, funcname] : addresses)
+    for (const auto &[addr, funcinfo] : addresses)
     {
+        const auto funcname = funcinfo.name;
+        const auto args = funcinfo.args;
         size_t pos = mangled_name.find(funcname);
         if (pos != string::npos)
         {
+            for (const auto &arg : args)
+            {
+                pos = mangled_name.find(arg);
+                if (pos == string::npos)
+                    return 0;
+            }
             return addr;
         }
     }
-
     return 0;
 }
 
-void MapNames(const string &dir, const string &file_name, unordered_map<int, string> &mangled_addresses, const unordered_map<int, string> &addresses)
+void MapNames(const string &dir, const string &file_name, unordered_map<int, string> &mangled_addresses, const unordered_map<int, FuncInfo> &addresses)
 {
     const string file_path = dir + file_name;
     if (system(("g++ -D__GETADDR -c -m32 -fpermissive -std=c++17 -Wno-return-type " + file_path + " -o ./build/" + file_name + ".gch").c_str()))
@@ -185,12 +244,12 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, str
                     string mangled = mangled_addresses.at(addr);
                     if (mangled != line)
                     {
-                        WarnLog("Function '" << addresses.at(addr) << "' has different mangled versions across headers: '" << mangled << "' and '" << line);
+                        WarnLog("Function '" << addresses.at(addr).name << "' has different mangled versions across headers: '" << mangled << "' and '" << line);
                     }
                 }
                 else
                 {
-                    cout << "Found mangled version of function '" << addresses.at(addr) << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
+                    cout << "Found mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
                     mangled_addresses[addr] = line;
                 }
             }
@@ -198,7 +257,7 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, str
     }
 }
 
-unordered_map<int, string> MapMangledNames(const string &dir, const char *mask, const unordered_map<int, string> &addresses)
+unordered_map<int, string> MapMangledNames(const string &dir, const char *mask, const unordered_map<int, FuncInfo> &addresses)
 {
     unordered_map<int, string> mangled_addresses{};
     _finddata_t data;
@@ -214,9 +273,9 @@ unordered_map<int, string> MapMangledNames(const string &dir, const char *mask, 
     return mangled_addresses;
 }
 
-unordered_map<int, string> ExtractFunctionAddresses(const string &dir, const char *mask)
+unordered_map<int, FuncInfo> ExtractFunctionAddresses(const string &dir, const char *mask)
 {
-    unordered_map<int, string> addresses{};
+    unordered_map<int, FuncInfo> addresses{};
     _finddata_t data;
     int hf = _findfirst((dir + mask).c_str(), &data);
     if (hf < 0)
@@ -645,8 +704,8 @@ int main()
     {
         section_file_name = "new_section.ld";
         auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
-        addresses = MapMangledNames("./section/include/", "*.h", addresses);
-        CreateSectionWithAddresses("./section.ld", "./new_section.ld", addresses);
+        auto mangled_addresses = MapMangledNames("./section/include/", "*.h", addresses);
+        CreateSectionWithAddresses("./section.ld", "./new_section.ld", mangled_addresses);
     }
 
     if (system(
