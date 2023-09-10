@@ -5,7 +5,8 @@ class SymbolInfo
 {
 public:
     string name;
-    size_t position;
+    size_t start_position;
+    size_t end_position;
 };
 
 class ClassInfo : public SymbolInfo
@@ -26,7 +27,7 @@ public:
 const regex COMMENT_REGEX(R"(//.*\n)");
 const regex MULT_SPACES(R"(\s+)");
 
-const regex CLASS_DEF_REGEX(R"((class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
+const regex CLASS_DEF_REGEX(R"((namespace|class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
 void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
 {
 
@@ -35,23 +36,28 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
         return;
 
     string l;
+    size_t pos = 0;
+
     while (getline(f, l, ';'))
     {
-
-        string res;
-        res = regex_replace(l, COMMENT_REGEX, "");
-        res = regex_replace(res, MULT_SPACES, " ");
-
-        auto words_begin =
-            std::sregex_iterator(res.begin(), res.end(), CLASS_DEF_REGEX);
-        auto words_end = std::sregex_iterator();
+        replace(l.begin(), l.end(), '\n', ' ');
+        string res = l;
+        // res = regex_replace(l, COMMENT_REGEX, "");
+        // res = regex_replace(res, MULT_SPACES, " ");
+        const auto words_begin = std::sregex_iterator(res.begin(), res.end(), CLASS_DEF_REGEX);
+        const auto words_end = std::sregex_iterator();
 
         for (std::sregex_iterator i = words_begin; i != words_end; ++i)
         {
             smatch match = *i;
+            size_t start_pos = pos + match.position(0);
+            size_t end_pos = start_pos + match.length();
+            cout << start_pos << "\n";
+            cout << end_pos << "\n";
             string match_str = match.str();
             cout << "Found " << match_str << '\n';
         }
+        pos = f.tellg();
         // cout << res << "\n";
     }
 }
@@ -64,7 +70,7 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
         return;
 
     string l;
-    while (getline(f, l, ';'))
+    for (size_t file_pos = 0; getline(f, l, ';'); file_pos = f.tellg())
     {
         if (l.size() > 1024)
             continue;
@@ -86,6 +92,7 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
                 }
                 else
                 {
+                    cout << address_match.position(1) + file_pos << "\n";
                     cout << "Registering function '" << funcname << "' at 0x" << hex << ad << dec << '\n';
                     addresses[ad] = funcname;
                 }
@@ -96,8 +103,8 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 
 int main()
 {
-    // unordered_map<int, string> addresses;
-    // LookupAddresses("LuaAPI.h", addresses);
+    unordered_map<int, string> addresses;
+    LookupAddresses("LuaAPI.h", addresses);
 
     vector<SymbolInfo> info;
     LookupSymbolInfo("LuaAPI.h", info);
