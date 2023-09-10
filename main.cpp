@@ -561,7 +561,7 @@ int main()
     {
         section_file_name = "new_section.ld";
         auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
-        addresses = MapMangledNames("./section/include/", "LuaAPI.h", addresses);
+        addresses = MapMangledNames("./section/include/", "*.h", addresses);
         CreateSectionWithAddresses("./section.ld", "./new_section.ld", addresses);
     }
 
