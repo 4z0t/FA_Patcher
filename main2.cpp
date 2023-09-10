@@ -76,6 +76,28 @@ string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
     return res;
 }
 
+const regex ARGS_REGEX(R"((const\s+)?([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
+string MangleArguments(string args)
+{
+    cout << args << "\n\n";
+    const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
+    const auto words_end = std::sregex_iterator();
+
+    size_t prev_bracket = 0;
+    for (std::sregex_iterator i = words_begin; i != words_end; ++i)
+    {
+        smatch match = *i;
+
+        cout << match[0] << '\n';
+        cout << match[1] << '\n'; // const
+        cout << match[2] << '\n'; // typename
+        cout << match[3] << '\n'; // ptr
+        cout << match[4] << '\n'; // name
+    }
+    cout << '\n';
+    return {};
+}
+
 void LookupSymbolInfo(const string &name, unordered_map<int, string> &addresses)
 {
 
@@ -138,6 +160,7 @@ void LookupSymbolInfo(const string &name, unordered_map<int, string> &addresses)
                 {
                     string fname = MangleName(namespaces, funcname);
                     cout << address_match.position(1) + pos << "\n";
+                    MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
                          << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
                     addresses[ad] = fname;
@@ -193,5 +216,4 @@ int main()
 
     unordered_map<int, string> addresses;
     LookupSymbolInfo("LuaAPI.h", addresses);
-
 }
