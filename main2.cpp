@@ -36,9 +36,8 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
         return;
 
     string l;
-    size_t pos = 0;
 
-    while (getline(f, l, ';'))
+    for (size_t pos = 0; getline(f, l, ';'); pos = f.tellg())
     {
         replace(l.begin(), l.end(), '\n', ' ');
         string res = l;
@@ -57,12 +56,12 @@ void LookupSymbolInfo(const string &name, vector<SymbolInfo> info)
             string match_str = match.str();
             cout << "Found " << match_str << '\n';
         }
-        pos = f.tellg();
+
         // cout << res << "\n";
     }
 }
 
-const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\([^\(\)]*\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
+const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
 void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
 {
     ifstream f(name);
@@ -79,9 +78,10 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
         replace(l.begin(), l.end(), '\n', ' ');
         if (regex_match(l, address_match, ADDRESS_REGEX))
         {
-            if (address_match.size() == 3)
+            if (address_match.size() == 4)
             {
-                auto address = address_match[2];
+                auto address = address_match[3];
+                auto arguments = address_match[2];
                 auto funcname = address_match[1];
                 size_t pos;
                 int ad = stoi(address, &pos, 16);
@@ -93,7 +93,8 @@ void LookupAddresses(const string &name, unordered_map<int, string> &addresses)
                 else
                 {
                     cout << address_match.position(1) + file_pos << "\n";
-                    cout << "Registering function '" << funcname << "' at 0x" << hex << ad << dec << '\n';
+                    cout << "Registering function '" << funcname << "'"
+                         << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
                     addresses[ad] = funcname;
                 }
             }
