@@ -17,7 +17,7 @@ using namespace std;
 #include <vector>
 
 const regex ADDRESS_REGEX(R"(.*?\s(\~?[_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
-
+const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*(([_a-zA-Z]\w*)|(\.{3}))\s*(\*)?\s*([^\,]*)?\s*)");
 const regex CLASS_DEF_REGEX(R"((namespace|class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
 
 class SymbolInfo
@@ -127,7 +127,6 @@ string MangleType(const string &_const, const string &_type, const string &_ptr)
     return name;
 }
 
-const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*(([_a-zA-Z]\w*)|(\.{3}))\s*(\*)?\s*([^\,]*)?\s*)");
 string MangleArguments(string args)
 {
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
