@@ -1,7 +1,7 @@
 using namespace std;
 
-#include "demangler.hpp"
 #include "FunctionMapper.hpp"
+#include "demangler.hpp"
 #include "utility.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -146,7 +146,7 @@ string MangleArguments(string args)
         if (!_unsigned.empty())
             combined_args += _unsigned + ' ';
         combined_args += _type;
-        if (!_const.empty())
+        if (!_const.empty() && !_ptr.empty())
             combined_args += ' ' + _const;
         combined_args += _ptr;
         isFirst = false;
