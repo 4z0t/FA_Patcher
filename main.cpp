@@ -16,7 +16,7 @@ using namespace std;
 #include <unordered_set>
 #include <vector>
 
-const regex ADDRESS_REGEX(R"(.*?\s([_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
+const regex ADDRESS_REGEX(R"(.*?\s(\~?[_a-zA-Z]\w*)\(([^\(\)]*)\)\s*ADDR\((0x[0-9A-Fa-f]{6,8})\)$)");
 
 const regex CLASS_DEF_REGEX(R"((namespace|class|struct)\s+([_a-zA-Z]\w*)\s*\{)");
 
@@ -71,9 +71,16 @@ pair<string, string> MangleName(stack<SymbolInfo> namespaces, const string &func
     while (!namespaces.empty())
     {
         auto top = namespaces.top();
-        if (isFirst && top.name == funcname)
+        if (isFirst)
         {
-            mangled_name = "C";
+            if (top.name == funcname)
+            {
+                mangled_name = "C";
+            }
+            else if ('~' + top.name == funcname)
+            {
+                mangled_name = "D";
+            }
         }
         mangled_name = PlusLength(top.name) + mangled_name;
         name = top.name + "::" + name;
@@ -343,7 +350,7 @@ unordered_map<int, FuncInfo> ExtractFunctionAddresses(const string &dir, const c
     return addresses;
 }
 
-void CreateSectionWithAddresses(const string &file_name,  const unordered_map<int, MangledFunc> &addresses)
+void CreateSectionWithAddresses(const string &file_name, const unordered_map<int, MangledFunc> &addresses)
 {
     ofstream new_file(file_name);
     if (!new_file.is_open())
