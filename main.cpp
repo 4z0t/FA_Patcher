@@ -1,5 +1,6 @@
 using namespace std;
 
+#include "demangler.hpp"
 #include "utility.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -62,15 +63,24 @@ string PlusLength(const string &s)
     return to_string(s.length()) + s;
 }
 
-string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
+pair<string, string> MangleName(stack<SymbolInfo> namespaces, const string &funcname)
 {
-    string res = PlusLength(funcname);
+    string name = funcname;
+    string mangled_name = PlusLength(funcname);
+    bool isFirst = true;
     while (!namespaces.empty())
     {
-        res = PlusLength(namespaces.top().name) + res;
+        auto top = namespaces.top();
+        if (isFirst && top.name == funcname)
+        {
+            mangled_name = "C";
+        }
+        mangled_name = PlusLength(top.name) + mangled_name;
+        name = top.name + "::" + name;
         namespaces.pop();
+        isFirst = false;
     }
-    return res;
+    return {mangled_name, name};
 }
 
 const unordered_map<string, string> TYPE_MAP{
@@ -83,8 +93,9 @@ const unordered_map<string, string> TYPE_MAP{
 class FuncInfo
 {
 public:
+    string mangled_name;
     string name;
-    vector<string> args;
+    string args;
 };
 
 string MangleType(const string &_const, const string &_type, const string &_ptr)
@@ -109,20 +120,31 @@ string MangleType(const string &_const, const string &_type, const string &_ptr)
     return name;
 }
 
-const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
-vector<string> MangleArguments(string args)
+const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*(([_a-zA-Z]\w*)|(\.{3}))\s*(\*)?\s*([^\,]*)?\s*)");
+string MangleArguments(string args)
 {
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
-
-    vector<string> mangled_args{};
+    string combined_args = "";
+    bool isFirst = true;
     for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
         smatch match = *i;
-
-        mangled_args.push_back(MangleType(match[1], match[2].str() + match[3].str(), match[4]));
+        string _const = match[1];
+        string _unsigned = match[2];
+        string _type = match[3];
+        string _ptr = match[6];
+        if (!isFirst)
+            combined_args += ", ";
+        if (!_unsigned.empty())
+            combined_args += _unsigned + ' ';
+        combined_args += _type;
+        if (!_const.empty())
+            combined_args += ' ' + _const;
+        combined_args += _ptr;
+        isFirst = false;
     }
-    return mangled_args;
+    return combined_args;
 }
 
 void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses)
@@ -178,11 +200,11 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
                 }
                 else
                 {
-                    string fname = MangleName(namespaces, funcname);
+                    auto [mangled_name, fname] = MangleName(namespaces, funcname);
                     auto args = MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
-                         << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
-                    addresses[ad] = {fname, args};
+                         << "(" << arguments << ") at 0x" << hex << ad << dec << "\t" << mangled_name << "\n";
+                    addresses[ad] = {mangled_name, fname, args};
                 }
             }
         }
@@ -203,29 +225,37 @@ struct MangledFunc
 
 Similarity FindName(string mangled_name, const unordered_map<int, FuncInfo> &addresses)
 {
+    Similarity result = {0, 0};
     for (const auto &[addr, funcinfo] : addresses)
     {
+        const auto mangled = funcinfo.mangled_name;
         const auto funcname = funcinfo.name;
-        const auto args = funcinfo.args;
-        size_t pos = mangled_name.find(funcname);
+        auto args = funcinfo.args;
+        size_t pos = mangled_name.find(mangled);
         int similarity = 0;
 
         if (pos != string::npos)
         {
-            string mangled_args = mangled_name.substr(pos + funcname.length());
-            for (const auto &arg : args)
+            similarity++;
+            string demangled_name = demangle(mangled_name);
+            pos = demangled_name.find(funcname);
+
+            if (pos != string::npos)
             {
                 similarity++;
-                pos = mangled_args.find(arg);
-
-                if (pos == string::npos)
-                    return {addr, similarity};
-                mangled_args = mangled_name.substr(pos + arg.length());
+                if (args.empty())
+                    args = "()";
+                pos = demangled_name.find(args);
+                if (pos != string::npos)
+                {
+                    similarity++;
+                }
             }
-            return {addr, ++similarity};
         }
+        if (similarity > result.similarity)
+            result = {addr, similarity};
     }
-    return {0, 0};
+    return result;
 }
 
 void MapNames(const string &dir, const string &file_name, unordered_map<int, MangledFunc> &mangled_addresses, const unordered_map<int, FuncInfo> &addresses)
@@ -272,7 +302,8 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, Man
                 }
                 else
                 {
-                    cout << "Found mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
+                    auto info = addresses.at(addr);
+                    cout << "Found mangled version of function '" << info.name << '(' << info.args << ")' is '" << line << "' at 0x" << hex << addr << dec << '\n';
                     mangled_addresses[addr] = {line, similarity};
                 }
             }

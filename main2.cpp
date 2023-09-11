@@ -23,7 +23,7 @@ class FuncInfo
 {
 public:
     string name;
-    vector<string> args;
+    string args;
 };
 
 // const regex COMMENT_REGEX(R"((//.*\n)|(/\\*(.*?)\\*/))");
@@ -69,10 +69,16 @@ string PlusLength(const string &s)
 string MangleName(stack<SymbolInfo> namespaces, const string &funcname)
 {
     string res = PlusLength(funcname);
+    bool isFirst = true;
     while (!namespaces.empty())
     {
+        if (isFirst && namespaces.top().name == funcname)
+        {
+            res = "C";
+        }
         res = PlusLength(namespaces.top().name) + res;
         namespaces.pop();
+        isFirst = false;
     }
     return res;
 }
@@ -113,22 +119,33 @@ string MangleArgs(vector<string> &args)
     return name;
 }
 
-const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*([_a-zA-Z]\w*)\s*(\*)?\s*([^\,]*)?\s*)");
-vector<string> MangleArguments(string args)
+const regex ARGS_REGEX(R"(\s*(const)?\s*(unsigned)?\s*(([_a-zA-Z]\w*)|(\.{3}))\s*(\*)?\s*([^\,]*)?\s*)");
+string MangleArguments(string args)
 {
-    cout << args << "\n\n";
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
-
+    string combined_args = "";
     vector<string> mangled_args{};
+    bool isFirst = true;
     for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
         smatch match = *i;
-
-        mangled_args.push_back(MangleType(match[1], match[2].str() + match[3].str(), match[4]));
+        string _const = match[1];
+        string _unsigned = match[2];
+        string _type = match[3];
+        string _ptr = match[6];
+        if(!isFirst)
+            combined_args += ", ";
+        if (!_unsigned.empty())
+            combined_args += _unsigned + ' ';
+        combined_args += _type;
+        if (!_const.empty())
+            combined_args += ' ' + _const;
+        combined_args += _ptr;
+        isFirst = false;
     }
-    cout << '\n';
-    return mangled_args;
+    cout << combined_args << "\n";
+    return combined_args;
 }
 
 void LookupSymbolInfo(const string &name, unordered_map<int, FuncInfo> &addresses)
@@ -195,7 +212,7 @@ void LookupSymbolInfo(const string &name, unordered_map<int, FuncInfo> &addresse
                     cout << address_match.position(1) + pos << "\n";
                     auto args = MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
-                         << "(" << arguments << ") at 0x" << hex << ad << dec << '\n';
+                         << "(" << args << ") at 0x" << hex << ad << dec << '\n';
                     addresses[ad] = {fname, args};
                 }
             }
