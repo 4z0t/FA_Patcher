@@ -343,18 +343,12 @@ unordered_map<int, FuncInfo> ExtractFunctionAddresses(const string &dir, const c
     return addresses;
 }
 
-void CreateSectionWithAddresses(const string &base_file_name, const string &new_file_name, const unordered_map<int, MangledFunc> &addresses)
+void CreateSectionWithAddresses(const string &file_name,  const unordered_map<int, MangledFunc> &addresses)
 {
-    if (filesystem::exists(new_file_name))
-        filesystem::remove(new_file_name);
-    filesystem::copy_file(
-        base_file_name,
-        new_file_name,
-        filesystem::copy_options::overwrite_existing | filesystem::copy_options::update_existing);
-    ofstream new_file(new_file_name, ios::app);
+    ofstream new_file(file_name);
     if (!new_file.is_open())
     {
-        ErrLog("Couldn't open new section file " << new_file_name);
+        ErrLog("Couldn't open new section file " << file_name);
         return;
     }
     for (const auto &[addr, mangled_func] : addresses)
@@ -757,10 +751,9 @@ int main()
 
     if (use_address_mapping)
     {
-        section_file_name = "new_section.ld";
         auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
         auto mangled_addresses = MapMangledNames("./section/include/", "*.h", addresses);
-        CreateSectionWithAddresses("./section.ld", "./new_section.ld", mangled_addresses);
+        CreateSectionWithAddresses("./build/symbols.ld", mangled_addresses);
     }
 
     if (system(
