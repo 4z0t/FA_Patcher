@@ -181,7 +181,8 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
                     auto [mangled_name, fname] = MangleName(namespaces, funcname);
                     auto args = MangleArguments(arguments);
                     cout << "Registering function '" << fname << "'"
-                         << "(" << arguments << ") at 0x" << hex << ad << dec << "\t" << mangled_name << "\n";
+                         << "(" << arguments << ") at 0x" << hex << ad << dec << "\t" << mangled_name << "(" << args << ")"
+                         << "\n";
                     addresses[ad] = {mangled_name, fname, args};
                 }
             }
@@ -209,7 +210,7 @@ Similarity FindName(string mangled_name, const unordered_map<int, FuncInfo> &add
         const auto mangled = funcinfo.mangled_name;
         const auto funcname = funcinfo.name;
         auto args = funcinfo.args;
-        size_t pos = mangled_name.find(mangled);
+        string::size_type pos = mangled_name.find(mangled);
         int similarity = 0;
 
         if (pos != string::npos)
@@ -226,7 +227,7 @@ Similarity FindName(string mangled_name, const unordered_map<int, FuncInfo> &add
                 pos = demangled_name.find(args);
                 if (pos != string::npos)
                 {
-                    similarity++;
+                    similarity += args.length();
                 }
             }
         }
@@ -273,9 +274,8 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, Man
                         if (sim2 < similarity)
                         {
                             cout << "Found better mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
-                            mangled_addresses[addr] = {line, sim2};
+                            mangled_addresses[addr] = {line, similarity};
                         }
-                        // WarnLog("Function '" << addresses.at(addr).name << "' has different mangled versions across headers: '" << mangled << "' and '" << line);
                     }
                 }
                 else
@@ -725,8 +725,6 @@ int main()
     MakeLists("./section/", "*.cpp", smain);
     smain.close();
 
-    string section_file_name = "section.ld";
-
     if (use_address_mapping)
     {
         auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
@@ -736,7 +734,7 @@ int main()
 
     if (system(
             ("cd build && g++ " + cflags +
-             " -Wl,-T,../" + section_file_name + ",--image-base," +
+             " -Wl,-T,../section.ld,--image-base," +
              to_string(nf.imgbase + newVOffset - 0x1000) +
              ",-s,-Map,sectmap.txt ../section.cpp")
                 .c_str()))
