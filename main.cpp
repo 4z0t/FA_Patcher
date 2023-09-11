@@ -1,6 +1,7 @@
 using namespace std;
 
 #include "demangler.hpp"
+#include "FunctionMapper.hpp"
 #include "utility.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -243,7 +244,7 @@ Similarity FindName(string mangled_name, const unordered_map<int, FuncInfo> &add
         if (pos != string::npos)
         {
             similarity++;
-            string demangled_name = demangle(mangled_name);
+            string demangled_name = Demangle(mangled_name);
             pos = demangled_name.find(funcname);
 
             if (pos != string::npos)

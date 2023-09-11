@@ -17,7 +17,4 @@
 #define WarnLog(str) \
     cerr << "Warning:\t" << str << "\n"
 
-bool starts_with(std::string str, const char *substr)
-{
-    return strncmp(str.c_str(), substr, strlen(substr)) == 0;
-}
+bool starts_with(std::string str, const char *substr);
