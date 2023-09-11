@@ -91,13 +91,6 @@ pair<string, string> MangleName(stack<SymbolInfo> namespaces, const string &func
     return {mangled_name, name};
 }
 
-const unordered_map<string, string> TYPE_MAP{
-    {"usignedint", "j"},
-    {"char", "c"},
-    {"float", "f"},
-    {"int", "i"},
-};
-
 class FuncInfo
 {
 public:
@@ -105,28 +98,6 @@ public:
     string name;
     string args;
 };
-
-string MangleType(const string &_const, const string &_type, const string &_ptr)
-{
-    string name = "";
-    if (!_ptr.empty())
-    {
-        name = "P" + name;
-        if (!_const.empty())
-        {
-            name += "K";
-        }
-    }
-    if (TYPE_MAP.find(_type) == TYPE_MAP.end())
-    {
-        name += PlusLength(_type);
-    }
-    else
-    {
-        name += TYPE_MAP.at(_type);
-    }
-    return name;
-}
 
 string MangleArguments(string args)
 {
