@@ -699,7 +699,7 @@ int main(int argc, char **argv)
     dst.close();
     src.close();
 
-    RemoveFiles("./build/", "*.*");
+    RemoveFiles("./build/", "!symbols.ld");
     filesystem::create_directory("build");
 
     PEFile nf(newfile);
