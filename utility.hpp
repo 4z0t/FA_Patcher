@@ -18,3 +18,5 @@
     cerr << "Warning:\t" << str << "\n"
 
 bool starts_with(const std::string& str, const char *substr);
+
+int system(const std::string& command);

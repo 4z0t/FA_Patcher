@@ -98,7 +98,7 @@ public:
     string args;
 };
 
-string MangleArguments(const string& args)
+string MangleArguments(const string &args)
 {
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
@@ -201,7 +201,7 @@ struct MangledFunc
     int similarity;
 };
 
-Similarity FindName(const string& mangled_name, const unordered_map<int, FuncInfo> &addresses)
+Similarity FindName(const string &mangled_name, const unordered_map<int, FuncInfo> &addresses)
 {
     Similarity result = {0, 0};
     for (const auto &[addr, funcinfo] : addresses)
@@ -239,13 +239,13 @@ Similarity FindName(const string& mangled_name, const unordered_map<int, FuncInf
 void MapNames(const string &dir, const string &file_name, unordered_map<int, MangledFunc> &mangled_addresses, const unordered_map<int, FuncInfo> &addresses)
 {
     const string file_path = dir + file_name;
-    if (system(("g++ -D__GETADDR -c -m32 -fpermissive -std=c++17 -Wno-return-type " + file_path + " -o ./build/" + file_name + ".gch").c_str()))
+    if (system("g++ -D__GETADDR -c -m32 -fpermissive -std=c++17 -Wno-return-type " + file_path + " -o ./build/" + file_name + ".gch"))
     {
         ErrLog("unable to compile header file " << file_path);
         return;
     }
 
-    if (system(("strings ./build/" + file_name + ".gch >> ./build/s.txt").c_str()))
+    if (system("strings ./build/" + file_name + ".gch >> ./build/s.txt"))
     {
         ErrLog("unable to extract strings " << file_name);
         return;
@@ -677,7 +677,7 @@ int main(int argc, char **argv)
         return 1;
 
     string config_name = "config.txt";
-    if(argc == 2)
+    if (argc == 2)
     {
         config_name = argv[1];
     }
@@ -741,19 +741,17 @@ int main(int argc, char **argv)
         CreateSectionWithAddresses("./build/symbols.ld", mangled_addresses);
     }
 
-    if (system(
-            ("cd build && g++ " + cflags +
-             " -Wl,-T,../section.ld,--image-base," +
-             to_string(nf.imgbase + newVOffset - 0x1000) +
-             ",-s,-Map,sectmap.txt ../section.cpp")
-                .c_str()))
+    if (system("cd build && g++ " + cflags +
+               " -Wl,-T,../section.ld,--image-base," +
+               to_string(nf.imgbase + newVOffset - 0x1000) +
+               ",-s,-Map,sectmap.txt ../section.cpp"))
         return 1;
 
     ParseMap("build/sectmap.txt", "define.h");
 
     RemoveFiles("./build/", "*.o");
 
-    if (system(("cd build && g++ -c " + cflags + " ../hooks/*.cpp").c_str()))
+    if (system("cd build && g++ -c " + cflags + " ../hooks/*.cpp"))
         return 1;
 
     ofstream pld("patch.ld");
@@ -787,11 +785,9 @@ int main(int argc, char **argv)
     *(.rdata$zzz)\n    *(.eh_frame)\n    *(.ctors)\n    *(.reloc)\n  }\n}";
     pld.close();
 
-    if (system(
-            ("ld -T patch.ld --image-base " +
-             to_string(nf.imgbase) +
-             " -s -Map build/patchmap.txt")
-                .c_str()))
+    if (system("ld -T patch.ld --image-base " +
+               to_string(nf.imgbase) +
+               " -s -Map build/patchmap.txt"))
         return 1;
 
     PEFile pf("build/patch.pe");
