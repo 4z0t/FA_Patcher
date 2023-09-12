@@ -750,6 +750,7 @@ int main(int argc, char **argv)
     ParseMap("build/sectmap.txt", "define.h");
 
     RemoveFiles("./build/", "*.o");
+    RemoveFiles("./build/", "*.gch");
 
     if (system("cd build && g++ -c " + cflags + " ../hooks/*.cpp"))
         return 1;
