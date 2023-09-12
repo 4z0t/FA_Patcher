@@ -195,9 +195,9 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
         int addr = match.addr;
         if (addr)
         {
-            const auto funcname = match.info.name;
-            const auto arguments = match.info.args;
-            const auto mangled_name = match.info.mangled_name;
+            const auto& funcname = match.info.name;
+            const auto& arguments = match.info.args;
+            const auto& mangled_name = match.info.mangled_name;
             if (addresses.find(addr) != addresses.end())
             {
                 WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(addr).name << "' : 0x" << hex << addr << dec);
