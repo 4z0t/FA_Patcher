@@ -33,10 +33,8 @@ public:
 void CountBrackets(
     int &bracket_counter,
     const string &s,
-    stack<SymbolInfo> &namespaces,
-    size_t pos)
+    stack<SymbolInfo> &namespaces)
 {
-    // size_t j = 0;
     for (char c : s)
     {
         if (c == '{')
@@ -49,12 +47,9 @@ void CountBrackets(
             --bracket_counter;
             if (!namespaces.empty() && namespaces.top().level == bracket_counter)
             {
-                // auto& ns = namespaces.top();
                 namespaces.pop();
-                // ns.end_position = pos + j;
             }
         }
-        // j++;
     }
 }
 
@@ -152,10 +147,10 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
             string class_name = match[2];
             size_t end_match = match.position(0) + match.length();
             namespaces.push(SymbolInfo{class_name, start_pos, 0, bracket_counter});
-            CountBrackets(bracket_counter, res.substr(prev_bracket, end_match - prev_bracket), namespaces, pos);
+            CountBrackets(bracket_counter, res.substr(prev_bracket, end_match - prev_bracket), namespaces);
             prev_bracket = end_match;
         }
-        CountBrackets(bracket_counter, res.substr(prev_bracket), namespaces, pos);
+        CountBrackets(bracket_counter, res.substr(prev_bracket), namespaces);
 
         if (res.size() > 1024)
             continue;
