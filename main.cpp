@@ -85,9 +85,8 @@ pair<string, string> MangleName(stack<SymbolInfo> namespaces, const string &func
     return {mangled_name, name};
 }
 
-class FuncInfo
+struct FuncInfo
 {
-public:
     string mangled_name;
     string name;
     string args;
@@ -195,9 +194,8 @@ struct Similarity
     int similarity;
 };
 
-struct MangledFunc
+struct MangledFunc : FuncInfo
 {
-    string name;
     int similarity;
 };
 
@@ -269,21 +267,22 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, Man
 
         if (mangled_addresses.find(addr) != mangled_addresses.end())
         {
-            auto [mangled, sim2] = mangled_addresses.at(addr);
-            if (mangled != line)
+            const auto &m = mangled_addresses.at(addr);
+            if (m.mangled_name != line)
             {
-                if (sim2 < similarity)
+                if (m.similarity < similarity)
                 {
+                    const auto &info = addresses.at(addr);
                     cout << "Found better mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
-                    mangled_addresses[addr] = {line, similarity};
+                    mangled_addresses[addr] = {line, info.name, info.args, similarity};
                 }
             }
         }
         else
         {
-            auto info = addresses.at(addr);
+            const auto &info = addresses.at(addr);
             cout << "Found mangled version of function '" << info.name << '(' << info.args << ")' is '" << line << "' at 0x" << hex << addr << dec << '\n';
-            mangled_addresses[addr] = {line, similarity};
+            mangled_addresses[addr] = {line, info.name, info.args, similarity};
         }
     }
 }
@@ -319,7 +318,7 @@ unordered_map<int, FuncInfo> ExtractFunctionAddresses(const string &dir, const c
 
     return addresses;
 }
-
+#define COMMENT(s) "/* " << s << " */"
 void CreateSectionWithAddresses(const string &file_name, const unordered_map<int, MangledFunc> &addresses)
 {
     ofstream new_file(file_name);
@@ -330,8 +329,9 @@ void CreateSectionWithAddresses(const string &file_name, const unordered_map<int
     }
     for (const auto &[addr, mangled_func] : addresses)
     {
-        auto funcname = mangled_func.name;
-        new_file << "_" << funcname << " = 0x" << hex << addr << ";\n";
+        const auto &funcname = mangled_func.name;
+        const auto &mangled_name = mangled_func.mangled_name;
+        new_file << "_" << mangled_name << " = 0x" << hex << addr << ";    " << COMMENT(funcname << "(" << mangled_func.args << ")") << "\n";
     }
     new_file.close();
 }
