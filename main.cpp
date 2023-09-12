@@ -36,7 +36,7 @@ void CountBrackets(
     stack<SymbolInfo> &namespaces,
     size_t pos)
 {
-    //size_t j = 0;
+    // size_t j = 0;
     for (char c : s)
     {
         if (c == '{')
@@ -49,12 +49,12 @@ void CountBrackets(
             --bracket_counter;
             if (!namespaces.empty() && namespaces.top().level == bracket_counter)
             {
-                //auto& ns = namespaces.top();
+                // auto& ns = namespaces.top();
                 namespaces.pop();
-                //ns.end_position = pos + j;
+                // ns.end_position = pos + j;
             }
         }
-        //j++;
+        // j++;
     }
 }
 
@@ -106,11 +106,11 @@ string RecombineArguments(const string &args)
     bool isFirst = true;
     for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
-        const auto& match = *i;
-        const string& _const = match[1];
-        const string& _unsigned = match[2];
-        const string& _type = match[3];
-        const string& _ptr = match[6];
+        const auto &match = *i;
+        const string &_const = match[1];
+        const string &_unsigned = match[2];
+        const string &_type = match[3];
+        const string &_ptr = match[6];
         if (!isFirst)
             combined_args += ", ";
         if (!_unsigned.empty())
@@ -260,30 +260,30 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, Man
     string line;
     while (getline(strings_file, line))
     {
-        if (starts_with(line, "_Z"))
+        if (!starts_with(line, "_Z"))
+            continue;
+
+        auto [addr, similarity] = FindName(line, addresses);
+        if (addr == 0)
+            continue;
+
+        if (mangled_addresses.find(addr) != mangled_addresses.end())
         {
-            auto [addr, similarity] = FindName(line, addresses);
-            if (addr)
+            auto [mangled, sim2] = mangled_addresses.at(addr);
+            if (mangled != line)
             {
-                if (mangled_addresses.find(addr) != mangled_addresses.end())
+                if (sim2 < similarity)
                 {
-                    auto [mangled, sim2] = mangled_addresses.at(addr);
-                    if (mangled != line)
-                    {
-                        if (sim2 < similarity)
-                        {
-                            cout << "Found better mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
-                            mangled_addresses[addr] = {line, similarity};
-                        }
-                    }
-                }
-                else
-                {
-                    auto info = addresses.at(addr);
-                    cout << "Found mangled version of function '" << info.name << '(' << info.args << ")' is '" << line << "' at 0x" << hex << addr << dec << '\n';
+                    cout << "Found better mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
                     mangled_addresses[addr] = {line, similarity};
                 }
             }
+        }
+        else
+        {
+            auto info = addresses.at(addr);
+            cout << "Found mangled version of function '" << info.name << '(' << info.args << ")' is '" << line << "' at 0x" << hex << addr << dec << '\n';
+            mangled_addresses[addr] = {line, similarity};
         }
     }
 }
