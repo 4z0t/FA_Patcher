@@ -182,6 +182,11 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
             }
         }
     }
+
+    if (bracket_counter != 0)
+    {
+        WarnLog("Unbalanced brackets in " << name << " detected! " << bracket_counter);
+    }
 }
 
 struct Similarity
