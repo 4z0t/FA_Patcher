@@ -36,7 +36,7 @@ void CountBrackets(
     stack<SymbolInfo> &namespaces,
     size_t pos)
 {
-    size_t j = 0;
+    //size_t j = 0;
     for (char c : s)
     {
         if (c == '{')
@@ -49,12 +49,12 @@ void CountBrackets(
             --bracket_counter;
             if (!namespaces.empty() && namespaces.top().level == bracket_counter)
             {
-                auto ns = namespaces.top();
+                //auto& ns = namespaces.top();
                 namespaces.pop();
-                ns.end_position = pos + j;
+                //ns.end_position = pos + j;
             }
         }
-        j++;
+        //j++;
     }
 }
 
@@ -98,7 +98,7 @@ public:
     string args;
 };
 
-string MangleArguments(const string &args)
+string RecombineArguments(const string &args)
 {
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
@@ -106,11 +106,11 @@ string MangleArguments(const string &args)
     bool isFirst = true;
     for (std::sregex_iterator i = words_begin; i != words_end; ++i)
     {
-        smatch match = *i;
-        string _const = match[1];
-        string _unsigned = match[2];
-        string _type = match[3];
-        string _ptr = match[6];
+        const auto& match = *i;
+        const string& _const = match[1];
+        const string& _unsigned = match[2];
+        const string& _type = match[3];
+        const string& _ptr = match[6];
         if (!isFirst)
             combined_args += ", ";
         if (!_unsigned.empty())
@@ -178,7 +178,7 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
                 else
                 {
                     auto [mangled_name, fname] = MangleName(namespaces, funcname);
-                    auto args = MangleArguments(arguments);
+                    auto args = RecombineArguments(arguments);
                     cout << "Registering function '" << fname << "'"
                          << "(" << arguments << ") at 0x" << hex << ad << dec << "\t" << mangled_name << "(" << args << ")"
                          << "\n";
