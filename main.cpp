@@ -118,6 +118,43 @@ string RecombineArguments(const string &args)
     return combined_args;
 }
 
+struct LookUpResult
+{
+    int addr;
+    FuncInfo info;
+};
+
+LookUpResult MatchFunction(const string &s, unordered_map<int, FuncInfo> &addresses, stack<SymbolInfo> &namespaces)
+{
+    LookUpResult result = {0, {}};
+    smatch address_match;
+    if (!regex_match(s, address_match, ADDRESS_REGEX))
+    {
+        return result;
+    }
+
+    if (address_match.size() != 4)
+    {
+        return result;
+    }
+
+    const auto funcname = address_match[1];
+    const auto arguments = address_match[2];
+    const auto address = address_match[3];
+
+    int ad = stoi(address, nullptr, 16);
+
+    auto [mangled_name, fname] = MangleName(namespaces, funcname);
+    auto args = RecombineArguments(arguments);
+
+    result.addr = ad;
+    result.info.mangled_name = mangled_name;
+    result.info.args = args;
+    result.info.name = fname;
+
+    return result;
+}
+
 void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses)
 {
 
@@ -154,30 +191,24 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
         if (res.size() > 1024)
             continue;
 
-        smatch address_match;
-        if (regex_match(l, address_match, ADDRESS_REGEX))
+        auto match = MatchFunction(l, addresses, namespaces);
+        int addr = match.addr;
+        if (addr)
         {
-            if (address_match.size() == 4)
+            const auto funcname = match.info.name;
+            const auto arguments = match.info.args;
+            const auto mangled_name = match.info.mangled_name;
+            if (addresses.find(addr) != addresses.end())
             {
-                const auto funcname = address_match[1];
-                const auto arguments = address_match[2];
-                const auto address = address_match[3];
-
-                int ad = stoi(address, nullptr, 16);
-                if (addresses.find(ad) != addresses.end())
-                {
-                    WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(ad).name << "' : 0x" << hex << ad << dec);
-                    return;
-                }
-                else
-                {
-                    auto [mangled_name, fname] = MangleName(namespaces, funcname);
-                    auto args = RecombineArguments(arguments);
-                    cout << "Registering function '" << fname << "'"
-                         << "(" << arguments << ") at 0x" << hex << ad << dec << "\t" << mangled_name << "(" << args << ")"
-                         << "\n";
-                    addresses[ad] = {mangled_name, fname, args};
-                }
+                WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(addr).name << "' : 0x" << hex << addr << dec);
+                return;
+            }
+            else
+            {
+                cout << "Registering function '" << funcname << "'"
+                     << "(" << arguments << ") at 0x" << hex << addr << dec << "\t" << mangled_name
+                     << "\n";
+                addresses[addr] = {mangled_name, funcname, arguments};
             }
         }
     }
