@@ -636,12 +636,9 @@ bool use_address_mapping = false;
 
 #define align(v, a) ((v) + ((a)-1)) & ~((a)-1)
 
-int main()
+void LoadConfig(const string &file_name)
 {
-    if (system("g++ --version"))
-        return 1;
-
-    ifstream f("config.txt");
+    ifstream f(file_name);
     if (f.is_open())
     {
         string l;
@@ -665,7 +662,7 @@ int main()
     }
     else
     {
-        ofstream f("config.txt");
+        ofstream f(file_name);
         f << "oldfile " << oldfile << "\n";
         f << "newfile " << newfile << "\n";
         f << "newsect " << newsect << "\n";
@@ -673,6 +670,19 @@ int main()
         f << "cflags " << cflags << "\n";
         f << "addressmapping " << use_address_mapping << "\n";
     }
+}
+
+int main(int argc, char **argv)
+{
+    if (system("g++ --version"))
+        return 1;
+
+    string config_name = "config.txt";
+    if(argc == 2)
+    {
+        config_name = argv[1];
+    }
+    LoadConfig(config_name);
 
     ifstream src(oldfile, ios::binary);
     if (!src.is_open())
