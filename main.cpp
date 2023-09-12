@@ -54,7 +54,6 @@ void CountBrackets(
                 ns.end_position = pos + j;
             }
         }
-
         j++;
     }
 }
@@ -71,7 +70,7 @@ pair<string, string> MangleName(stack<SymbolInfo> namespaces, const string &func
     bool isFirst = true;
     while (!namespaces.empty())
     {
-        auto top = namespaces.top();
+        const auto &top = namespaces.top();
         if (isFirst)
         {
             if (top.name == funcname)
@@ -99,7 +98,7 @@ public:
     string args;
 };
 
-string MangleArguments(string args)
+string MangleArguments(const string& args)
 {
     const auto words_begin = std::sregex_iterator(args.begin(), args.end(), ARGS_REGEX);
     const auto words_end = std::sregex_iterator();
@@ -202,7 +201,7 @@ struct MangledFunc
     int similarity;
 };
 
-Similarity FindName(string mangled_name, const unordered_map<int, FuncInfo> &addresses)
+Similarity FindName(const string& mangled_name, const unordered_map<int, FuncInfo> &addresses)
 {
     Similarity result = {0, 0};
     for (const auto &[addr, funcinfo] : addresses)
@@ -701,7 +700,7 @@ int main(int argc, char **argv)
     src.close();
 
     RemoveFiles("./build/", "*.*");
-    _wmkdir(L"build");
+    filesystem::create_directory("build");
 
     PEFile nf(newfile);
     if (nf.FindSect(newsect.c_str()))
