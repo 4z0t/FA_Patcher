@@ -193,23 +193,23 @@ void LookupAddresses(const string &name, unordered_map<int, FuncInfo> &addresses
 
         auto match = MatchFunction(l, addresses, namespaces);
         int addr = match.addr;
-        if (addr)
+        if (addr == 0)
+            continue;
+
+        const auto &funcname = match.info.name;
+        const auto &arguments = match.info.args;
+        const auto &mangled_name = match.info.mangled_name;
+        if (addresses.find(addr) != addresses.end())
         {
-            const auto& funcname = match.info.name;
-            const auto& arguments = match.info.args;
-            const auto& mangled_name = match.info.mangled_name;
-            if (addresses.find(addr) != addresses.end())
-            {
-                WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(addr).name << "' : 0x" << hex << addr << dec);
-                return;
-            }
-            else
-            {
-                cout << "Registering function '" << funcname << "'"
-                     << "(" << arguments << ") at 0x" << hex << addr << dec << "\t" << mangled_name
-                     << "\n";
-                addresses[addr] = {mangled_name, funcname, arguments};
-            }
+            WarnLog("Function '" << funcname << "' has same address as '" << addresses.at(addr).name << "' : 0x" << hex << addr << dec);
+            return;
+        }
+        else
+        {
+            cout << "Registering function '" << funcname << "'"
+                 << "(" << arguments << ") at 0x" << hex << addr << dec << "\t" << mangled_name
+                 << "\n";
+            addresses[addr] = {mangled_name, funcname, arguments};
         }
     }
 
