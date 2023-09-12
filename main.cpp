@@ -245,16 +245,16 @@ void MapNames(const string &dir, const string &file_name, unordered_map<int, Man
         return;
     }
 
-    if (system("strings ./build/" + file_name + ".gch >> ./build/s.txt"))
+    if (system("strings ./build/" + file_name + ".gch >> ./build/symbols.txt"))
     {
-        ErrLog("unable to extract strings " << file_name);
+        ErrLog("unable to extract symbols " << file_name);
         return;
     }
 
-    ifstream strings_file("./build/s.txt");
+    ifstream strings_file("./build/symbols.txt");
     if (!strings_file.is_open())
     {
-        ErrLog("unable to open strings file");
+        ErrLog("unable to open symbols file");
         return;
     }
     string line;
