@@ -768,7 +768,7 @@ int main(int argc, char **argv)
     if (use_address_mapping)
     {
         auto addresses = ExtractFunctionAddresses("./section/include/", "*.h");
-        auto mangled_addresses = MapMangledNames("./section/include/", "*.h", addresses);
+        auto mangled_addresses = MapMangledNames("./section/include/", "funcmap.h", addresses);
         CreateSectionWithAddresses("./build/symbols.ld", mangled_addresses);
     }
 
