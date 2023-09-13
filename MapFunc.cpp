@@ -379,11 +379,6 @@ int main(int argc, char **argv)
     const string scan_format = argv[3];
     const string output_dir = argv[4];
     const string output_file = argv[5];
-    cout << target_file << "\n"
-         << target_dir << "\n"
-         << scan_format << "\n"
-         << output_dir << "\n"
-         << output_file << "\n";
     auto addresses = ExtractFunctionAddresses(target_dir, scan_format);
     auto mangled_addresses = MapMangledNames(output_dir, target_dir, target_file, addresses);
     CreateSectionWithAddresses(output_dir + output_file, mangled_addresses);
