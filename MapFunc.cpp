@@ -303,7 +303,7 @@ void MapNames(const string &output_dir, const string &target_dir, const string &
                 if (m.similarity < similarity)
                 {
                     const auto &info = addresses.at(addr);
-                    cout << "Found better mangled version of function '" << addresses.at(addr).name << "' is '" << line << "' at 0x" << hex << addr << dec << '\n';
+                    cout << "Found better mangled version of function '" << info.name << "(" << info.args << ")' is '" << line << "' at 0x" << hex << addr << dec << '\n';
                     mangled_addresses[addr] = {line, info.name, info.args, similarity};
                 }
             }
