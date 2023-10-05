@@ -146,9 +146,9 @@ COFFFile::COFFFile(string filename) {
         }
         COFFSect* sect = FindSect(data);
         if (!sect) {
-            sects.push_back({0, 0, 0});
+            sects.push_back({});
             sect = &sects.back();
-            strncpy(sect->name, data, sizeof(sect->name));
+            memcpy(sect->name, data, sizeof(sect->name));
         }
         if (data[17] > 0) {
             f.read(data, sizeof(data));
@@ -361,7 +361,20 @@ int main() {
     vector<COFFFile> hooks;
     hf = _findfirst("./build/*.o", &fdata);
     do {
-        hooks.push_back(COFFFile(string("build/") + fdata.name));
+        auto coff = COFFFile(string("build/") + fdata.name);
+        bool valid = false;
+        for (auto &sect : coff.sects) {
+            string s = ": " + string(fdata.name) + ' ' + sect.name + '\n';
+            if (sect.name[7])
+                cout << "Hook name too long" << s; else
+            if (!sect.size)
+                cout << "Hook invalid size" << s; else
+            if (sect.offset < nf.imgbase)
+                cout << "Hook invalid offset" << s; else
+                valid = true;
+        }
+        if (valid)
+            hooks.push_back(coff);
     } while (_findnext(hf, &fdata) != -1);
     _findclose(hf);
 
@@ -394,11 +407,7 @@ int main() {
         if (hf->sects.empty())
             cout << "No hooks in " << hf->name << '\n';
         for (int i = 0; i < hf->sects.size(); i++) {
-            PESect* psect = pf.FindSect((".h" + to_string(hi)).c_str());
-            if (psect->VOffset < 0) {
-                cout << "Hook invalid offset " << hf->name << " .h" << i << "\n";
-                continue;
-            }
+            PESect* psect = pf.FindSect((".h" + to_string(hi++)).c_str());
             uint32_t size = hf->sects[i].size;
             char* buf = (char*)malloc(size);
             pf.seekp(psect->FOffset);
@@ -406,7 +415,6 @@ int main() {
             nf.seekp(psect->VOffset);
             nf.write(buf, size);
             free(buf);
-            hi++;
         }
     }
 

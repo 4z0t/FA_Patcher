@@ -30,7 +30,7 @@ FAF's patches are contained at: https://github.com/FAForever/FA-Binary-Patches
 - Hooks rules:
   - In each hook file may be several hooks.
   - For each hook need header: `asm(".section h*; .set h*,**;")`
-    - `*` is hook name(max 7 chars), `**` virtual address to be placed.
+    - `*` is hook name(max 6 chars), `**` virtual address to be placed.
   - For using symbols of `section` from asm need use macro `QU`.
     - Example: `"JMP "QU(BuildUnit)";"`
   - Available `.text.startup` as `STARTUP`

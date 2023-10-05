@@ -1,1 +1,1 @@
-g++ -pipe -static -s -Os -std=c++17 main.cpp -o FaP.exe
+g++ -pipe -static -s -Os -std=c++20 main.cpp -o FaP.exe
