@@ -50,6 +50,7 @@ void ParseMap(const char *mapfile, const char *outfile) {
             stringstream ss(l);
             string w, w2;
             ss >> w; ss >> w2;
+            replace(w2.begin(), w2.end(), ':', '_');
             ofile << "#define " << w2 << " " << w << "\n";
             continue;
         }
