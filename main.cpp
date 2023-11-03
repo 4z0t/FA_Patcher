@@ -391,11 +391,8 @@ int main() {
         }
     }
 
-    PEFile sf("build/section.pe");
-    size_t ssize = sf.sects.back().VOffset + sf.sects.back().VSize - sf.sects[0].VOffset;
-
     pld << "  " << newsect << " 0x" << hex << nf.imgbase + newVOffset << ": {\n\
-    . = . + "+ to_string(ssize) +";\n    *(.data)\n    *(.bss)\n    *(.rdata)\n  }\n";
+    build/section.pe\n    *(.data)\n    *(.bss)\n    *(.rdata)\n  }\n";
     pld << "  /DISCARD/ : {\n    *(.text)\n    *(.text.startup)\n\
     *(.rdata$zzz)\n    *(.eh_frame)\n    *(.ctors)\n    *(.reloc)\n  }\n}";
     pld.close();
@@ -440,14 +437,6 @@ int main() {
     nf.seekp(nsect->FOffset);
     nf.write(buf, sect->FSize);
     free(buf);
-    for (auto &s : sf.sects) {
-        char* buf = (char*)malloc(s.FSize);
-        sf.seekp(s.FOffset);
-        sf.read(buf, s.FSize);
-        nf.seekp(nsect->FOffset + s.VOffset - sf.sects[0].VOffset);
-        nf.write(buf, s.FSize);
-        free(buf);
-    }
     nf.Save();
     pf.close();
 
