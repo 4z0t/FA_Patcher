@@ -131,20 +131,6 @@ COFFFile::COFFFile(string filename) {
         return;
     }
     name = filename;
-    f.seekg(2);
-    uint16_t scnt;
-    f.read((char*)&scnt, sizeof(scnt));
-    f.seekg(20);
-    for (int i = 0; i < scnt; i++) {
-        char data[8];
-        f.read(data, sizeof(data));
-        if (data[0] == 'h') {
-            sects.push_back({});
-            COFFSect* sect = &sects.back();
-            memcpy(sect->name, data, sizeof(sect->name));
-        }
-        f.seekg(0x20, ios_base::cur);
-    }
     f.seekg(8);
     uint32_t pos, cnt;
     f.read((char*)&pos, sizeof(pos));
@@ -153,11 +139,16 @@ COFFFile::COFFFile(string filename) {
     for (int i = 0; i < cnt; i++) {
         char data[18];
         f.read(data, sizeof(data));
-        COFFSect* sect = FindSect(data);
-        if (!sect) {
+        if (data[0] != 'h') {
             f.seekg(sizeof(data) * data[17], ios_base::cur);
             i += data[17];
             continue;
+        }
+        COFFSect* sect = FindSect(data);
+        if (!sect) {
+            sects.push_back({});
+            sect = &sects.back();
+            memcpy(sect->name, data, sizeof(sect->name));
         }
         if (data[17] > 0) {
             f.read(data, sizeof(data));
@@ -166,10 +157,17 @@ COFFFile::COFFFile(string filename) {
         }
         sect->offset = *(uint32_t*)&data[8];
     }
+    f.seekg(2);
+    uint16_t scnt;
+    f.read((char*)&scnt, sizeof(scnt));
     f.seekg(20);
     for (int i = 0; i < scnt; i++) {
         char data[8];
         f.read(data, sizeof(data));
+        if (data[0] != 'h') {
+            f.seekg(0x20, ios_base::cur);
+            continue;
+        }
         COFFSect* sect = FindSect(data);
         if (sect) {
             f.seekp(f.tellg() + 8LL);
@@ -271,7 +269,7 @@ string oldfile("ForgedAlliance_base.exe");
 string newfile("ForgedAlliance_exxt.exe");
 string newsect(".exxt");
 uint32_t sectsize = 0x80000;
-string cflags("-pipe -m32 -Os -nostartfiles -w -fpermissive -masm=intel -std=c++20 -march=core2 -mfpmath=both");
+string cflags("-pipe -m32 -Os -nostartfiles -w -fpermissive -masm=intel -std=c++17 -march=core2 -mfpmath=both");
 
 #define align(v, a) ((v) + ((a) - 1)) & ~((a) - 1)
 
