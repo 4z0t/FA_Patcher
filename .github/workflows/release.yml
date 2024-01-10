@@ -26,7 +26,7 @@ jobs:
       - name: Build Patcher
         run: ./make.bat
 
-      - name: Create Draft Release
+      - name: Create Pre Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: v${{ github.event.inputs.version }}
